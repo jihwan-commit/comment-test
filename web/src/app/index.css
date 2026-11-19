@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+/* geulim 디자인 토큰(@sijecorp/common tailwind.config.js 에서 필요한 것만 옮김) */
+@theme {
+  --font-sans:
+    "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+    "Segoe UI", "Malgun Gothic", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --color-mainBlue: #5550ff;
+  --color-blue50: #f6f6ff;
+  --color-blueGray: #f9fafb;
+  --color-achromaticBlack: #24232e;
+  --color-cool100: #f2f6fa;
+  --color-cool150: #ebf1f7;
+  --color-cool200: #e3e9ef;
+  --color-cool300: #dae0e6;
+  --color-cool400: #c2cad1;
+  --color-cool500: #a1aab2;
+  --color-cool600: #838c94;
+  --color-cool700: #69727a;
+  --color-cool800: #515961;
+  --color-cool900: #3a4148;
+  --color-lampRed: #dd5050;
+  --color-warning: #ff9b3f;
+  --color-lemon3: #fff5c080;
+}
+
+body {
+  @apply bg-blueGray text-achromaticBlack antialiased;
+  font-size: 14px;
+}

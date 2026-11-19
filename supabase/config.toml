@@ -1,0 +1,4 @@
+project_id = "comment-test"
+
+[functions.api]
+verify_jwt = false
