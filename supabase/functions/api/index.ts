@@ -12,7 +12,8 @@
 //   POST   /so-size                           { salesOrderId, sizeName, isBasic? }
 //   DELETE /so-size/:id
 //   GET    /comments?targetType=&targetIds=a,b[&fieldPath=]   스레드+댓글
-//   POST   /comments                          { targetType, targetId, fieldPath, authorId, authorName, body, valueSnapshot }
+//   GET    /comments?targetType=&contextId=<부모 PK>           부모 기준(삭제된 자식 행 포함)
+//   POST   /comments                          { targetType, targetId, fieldPath, contextId?, authorId, authorName, body, valueSnapshot }
 //   PATCH  /comments/:id                      { body }
 //   DELETE /comments/:id                      soft delete
 //   PATCH  /comment-threads/:id/resolve
@@ -183,13 +184,16 @@ async function deleteSize(id: string) {
 async function listComments(q: URLSearchParams) {
   const targetType = q.get("targetType");
   const targetIds = q.get("targetIds")?.split(",").filter(Boolean) ?? [];
-  if (!targetType || targetIds.length === 0) return fail("targetType, targetIds required");
+  const contextId = q.get("contextId");
+  if (!targetType || (targetIds.length === 0 && !contextId)) return fail("targetType and (targetIds | contextId) required");
   let query = db.from("comment_thread")
     .select("*, comments:comment(*)")
     .eq("target_type", targetType)
-    .in("target_id", targetIds)
     .is("comments.deleted_at", null)
     .order("created_at", { referencedTable: "comment" });
+  // contextId 가 오면 부모 기준 — 삭제된 자식 행의 스레드까지 같이 온다(엣지케이스 1-B)
+  if (contextId) query = query.eq("context_id", contextId);
+  else query = query.in("target_id", targetIds);
   const fieldPath = q.get("fieldPath");
   if (fieldPath !== null) query = query.eq("field_path", fieldPath);
   const { data, error } = await query;
@@ -198,10 +202,10 @@ async function listComments(q: URLSearchParams) {
 }
 
 async function createComment(body: Record<string, unknown>) {
-  const { targetType, targetId, fieldPath = "", authorId, authorName = null, body: text, valueSnapshot = null } = body as Record<string, string | null | undefined>;
+  const { targetType, targetId, fieldPath = "", contextId = null, authorId, authorName = null, body: text, valueSnapshot = null } = body as Record<string, string | null | undefined>;
   if (!targetType || !targetId || !authorId || !text) return fail("targetType, targetId, authorId, body required");
   const { data: thread, error: e1 } = await db.from("comment_thread")
-    .upsert({ target_type: targetType, target_id: targetId, field_path: fieldPath ?? "" }, { onConflict: "target_type,target_id,field_path" })
+    .upsert({ target_type: targetType, target_id: targetId, field_path: fieldPath ?? "", context_id: contextId }, { onConflict: "target_type,target_id,field_path" })
     .select().single();
   if (e1) return fail(e1.message, 400);
   const { data, error } = await db.from("comment")

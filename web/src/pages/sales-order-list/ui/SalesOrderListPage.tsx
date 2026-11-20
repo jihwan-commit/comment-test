@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+
+import { CommentScope } from "@/widgets/commentable";
 
 import { useDeleteSalesOrders } from "@/features/delete-sales-order";
 
@@ -33,6 +35,17 @@ export function SalesOrderListPage() {
   const [collapsed, setCollapsed] = useState(false);
 
   const checkbox = useCheckbox<string>(data?.salesOrders ?? EMPTY);
+  const rowIds = useMemo(
+    () => (data?.salesOrders ?? EMPTY).map((so) => so.id),
+    [data]
+  );
+  // 요약 카드 스냅샷에 같이 남길 조회 조건 — "진행 · brandName=zara"
+  const conditionLabel = [
+    status,
+    ...Object.entries(searchValues)
+      .filter(([, v]) => v)
+      .map(([k, v]) => `${k}=${v}`),
+  ].join(" · ");
   const remove = useDeleteSalesOrders();
   const onDelete = () => {
     if (!window.confirm(`${checkbox.checkedItems.length}건을 삭제할까요?`))
@@ -43,7 +56,7 @@ export function SalesOrderListPage() {
   };
 
   return (
-    <div className="flex min-h-full min-w-[1400px] flex-col gap-4 bg-white p-6">
+    <div className="flex min-h-full min-w-[1400px] flex-col gap-4 bg-white p-6 pr-[404px]">
       <StatusTabs
         status={status}
         onChange={setStatus}
@@ -51,6 +64,7 @@ export function SalesOrderListPage() {
       />
       <SummarySection
         totals={data}
+        conditionLabel={conditionLabel}
         collapsed={collapsed}
         onToggle={() => setCollapsed((v) => !v)}
       />
@@ -73,28 +87,30 @@ export function SalesOrderListPage() {
         </div>
       ) : (
         <>
-          <SalesOrderTable
-            items={data?.salesOrders ?? []}
-            sort={sort}
-            searchOpen={searchOpen}
-            search={searchValues}
-            onApplySearch={applySearch}
-            checkbox={checkbox}
-            emptyContent={
-              hasFilters && data ? (
-                <span className="flex items-center gap-2 text-cool600">
-                  검색 결과가 없습니다
-                  <button
-                    type="button"
-                    onClick={resetFilters}
-                    className="font-semibold text-mainBlue"
-                  >
-                    초기화
-                  </button>
-                </span>
-              ) : undefined
-            }
-          />
+          <CommentScope targetType="GEULIM_SALES_ORDER_LIST" targetIds={rowIds}>
+            <SalesOrderTable
+              items={data?.salesOrders ?? []}
+              sort={sort}
+              searchOpen={searchOpen}
+              search={searchValues}
+              onApplySearch={applySearch}
+              checkbox={checkbox}
+              emptyContent={
+                hasFilters && data ? (
+                  <span className="flex items-center gap-2 text-cool600">
+                    검색 결과가 없습니다
+                    <button
+                      type="button"
+                      onClick={resetFilters}
+                      className="font-semibold text-mainBlue"
+                    >
+                      초기화
+                    </button>
+                  </span>
+                ) : undefined
+              }
+            />
+          </CommentScope>
           <div className="flex justify-center">
             <Pagination
               page={pagination.page}

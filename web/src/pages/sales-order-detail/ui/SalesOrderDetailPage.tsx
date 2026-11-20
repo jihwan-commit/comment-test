@@ -1,5 +1,7 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 
+import { CommentScope } from "@/widgets/commentable";
+
 import { formatDateTime } from "@/shared/lib/date";
 import { Badge, Button, EditToggle } from "@/shared/ui";
 
@@ -34,7 +36,7 @@ export function SalesOrderDetailPage() {
   const badge = detail && STATUS_BADGE[detail.status];
 
   return (
-    <div className="flex min-h-full flex-col bg-white text-sm">
+    <div className="flex min-h-full flex-col bg-white pr-[380px] text-sm">
       <nav
         aria-label="브레드크럼"
         className="flex h-8 items-center gap-1 border-b border-cool200 px-5"
@@ -125,11 +127,16 @@ export function SalesOrderDetailPage() {
                 <EditToggle on={isEditMode} onChange={toggleEdit} />
               </div>
             </div>
-            <OrderInfoForm
-              control={form.control}
-              disabled={!isEditMode}
-              detail={detail}
-            />
+            <CommentScope
+              targetType="GEULIM_SALES_ORDER_DETAIL"
+              targetIds={[detail.id]}
+            >
+              <OrderInfoForm
+                control={form.control}
+                disabled={!isEditMode}
+                detail={detail}
+              />
+            </CommentScope>
           </section>
           <SizeSection salesOrderId={detail.id} sizes={detail.sizes} />
         </>

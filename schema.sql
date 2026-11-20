@@ -6,12 +6,14 @@ create table if not exists comment_thread (
   target_type  varchar(50)  not null,            -- 앱 접두 포함. 예: GEULIM_SALES_ORDER, HR_EMPLOYEE
   target_id    varchar(100) not null,            -- 대상 행 PK. 앱마다 uuid/정수가 섞여 문자열로 받는다. FK 없음(폴리모픽)
   field_path   varchar(100) not null default '', -- 대상 열(DTO 키). '' = 행 전체. null 이면 unique 가 중복을 허용해 '' 로 고정
+  context_id   varchar(100),                     -- 선택. 자식 행(사이즈 등)의 부모 PK — 행이 삭제된 뒤에도 부모 기준으로 댓글을 찾기 위해
   resolved_at  timestamptz,
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now(),
   unique (target_type, target_id, field_path)
 );
-create index if not exists comment_thread_target_idx on comment_thread (target_type, target_id);
+create index if not exists comment_thread_target_idx  on comment_thread (target_type, target_id);
+create index if not exists comment_thread_context_idx on comment_thread (target_type, context_id);
 
 create table if not exists comment (
   id              uuid primary key default gen_random_uuid(),

@@ -1,12 +1,19 @@
+import { CommentScope, Commentable } from "@/widgets/commentable";
+
 import type { SalesOrdersResponse } from "@/entities/sales-order";
 
 import { formatAmount, formatNumber } from "@/shared/lib/formatters";
 
 type SummarySectionProps = {
   totals: SalesOrdersResponse | undefined;
+  /** 스냅샷에 같이 남길 조회 조건 설명 */
+  conditionLabel: string;
   collapsed: boolean;
   onToggle: () => void;
 };
+
+/** 집계 카드는 대응하는 DB 행이 없다 — 화면 고정 id 에 붙이고(2-A) 값과 조회 조건을 스냅샷으로 남긴다 */
+const SUMMARY_TARGET_ID = "sales-order-list";
 
 /**
  * 요약 카드 — 검색 조건에 걸린 전체 기준 합계(건수·수량·금액).
@@ -14,6 +21,7 @@ type SummarySectionProps = {
  */
 export function SummarySection({
   totals,
+  conditionLabel,
   collapsed,
   onToggle,
 }: SummarySectionProps) {
@@ -82,25 +90,42 @@ export function SummarySection({
         </button>
       </div>
       {!collapsed && (
-        <div className="mt-2 grid grid-cols-6 gap-4 px-2">
-          {cells.map((c) => (
-            <div
-              key={c.id}
-              className="rounded-lg bg-cool100 px-4 py-3"
-              data-summary-cell={c.id}
-            >
-              <div className="text-sm text-cool800">{c.label}</div>
-              <div className="mt-1 text-base font-bold whitespace-nowrap text-achromaticBlack">
-                {c.value}
-                {c.unit && (
-                  <span className="ml-1 text-[13px] font-normal text-cool700">
-                    {c.unit}
-                  </span>
-                )}
+        <CommentScope
+          targetType="GEULIM_SALES_ORDER_LIST_SUMMARY"
+          targetIds={[SUMMARY_TARGET_ID]}
+        >
+          <div className="mt-2 grid grid-cols-6 gap-4 px-2">
+            {cells.map((c) => (
+              <div
+                key={c.id}
+                className="rounded-lg bg-cool100 px-4 py-3"
+                data-summary-cell={c.id}
+              >
+                <div className="text-sm text-cool800">{c.label}</div>
+                <Commentable
+                  targetId={SUMMARY_TARGET_ID}
+                  field={c.id}
+                  label={`요약 · ${c.label}`}
+                  value={
+                    totals
+                      ? `${c.value}${c.unit ? " " + c.unit : ""} (${conditionLabel})`
+                      : null
+                  }
+                  inline
+                >
+                  <div className="mt-1 text-base font-bold whitespace-nowrap text-achromaticBlack">
+                    {c.value}
+                    {c.unit && (
+                      <span className="ml-1 text-[13px] font-normal text-cool700">
+                        {c.unit}
+                      </span>
+                    )}
+                  </div>
+                </Commentable>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </CommentScope>
       )}
     </section>
   );

@@ -14,6 +14,7 @@
 | 어느 테이블인가 (`target_type`) | `GEULIM_SALES_ORDER` | 앱 이름을 앞에 붙여서 앱끼리 겹치지 않게 합니다 |
 | 어느 행인가 (`target_id`) | `018f3c…` | 그 행의 PK. 앱마다 uuid나 숫자일 수 있어 문자열로 저장합니다 |
 | 어느 열인가 (`field_path`) | `buyerPo` | API 응답에서 그 열의 키 이름. 비워두면 행 전체에 대한 댓글입니다 |
+| (선택) 부모 행 (`context_id`) | 수주 id | 사이즈처럼 부모에 딸린 행에 댓글을 달 때 부모 PK 를 같이 저장합니다. 행이 삭제된 뒤에도 부모 기준으로 댓글을 찾을 수 있습니다 (엣지케이스 1-B 용) |
 
 렌더링할 때 각 셀은 자기 데이터로 이 세 값을 만들고, 댓글 목록에서 자기 것을 찾아 표시합니다. 셀이 어디로 이동하든 데이터가 키를 들고 다니기 때문에 댓글이 따라옵니다.
 
@@ -52,6 +53,14 @@
 | geulim | B (안 되면 C) | A | B | A |
 | | | | | |
 
+### geulim 구현 메모
+
+- 화면별 분리(3-B)는 `target_type` 에 화면을 넣어서 합니다: `GEULIM_SALES_ORDER_LIST` / `GEULIM_SALES_ORDER_DETAIL`. 같은 수주 id 라도 목록 댓글은 상세에 안 보입니다.
+- 집계 카드(2-A)는 DB 행이 없어 `target_type=GEULIM_SALES_ORDER_LIST_SUMMARY`, `target_id=sales-order-list`(화면 고정값), `field_path=totalCount` 처럼 붙이고, `value_snapshot` 에 `"67 건 (진행 · brandName=nike)"` 처럼 값과 조회 조건을 같이 남깁니다.
+- 사이즈 행(1-B)은 `context_id` 에 수주 id 를 넣고, 상세 화면은 `contextId` 로 조회해 지금 목록에 없는 행의 스레드를 "삭제된 행의 댓글" 로 보여줍니다.
+- 값 변경(4-A)은 댓글마다 `value_snapshot`(작성 당시 표시값) 을 저장하고, 현재 값과 다르면 "변경됨" + 옛 값을 보여줍니다. 빈 값도 `""` 로 저장해 나중에 채워지면 변경으로 잡힙니다.
+- 프론트: `web/src/widgets/commentable` — `CommentScope`(화면의 행 id 들로 스레드 일괄 조회) + `Commentable`(셀·필드 래퍼, 말풍선) + `CommentPanel`(우측 패널). 셀 식별은 `data-comment-target/id/field` 속성이지만 저장·조회는 전부 데이터 키로만 합니다.
+
 ## 세팅
 
 1. Supabase 프로젝트는 이미 만들어져 있습니다 (`comment-test`). 스키마·시드·API 전부 적용된 상태입니다.
@@ -81,9 +90,12 @@ Edge Function 하나(`supabase/functions/api/index.ts`)가 geulim 백엔드와 �
 
 ```
 GET    /comments?targetType=GEULIM_SALES_ORDER&targetIds=a,b,c[&fieldPath=buyerPo]
-       → [{ id, targetType, targetId, fieldPath, resolvedAt, comments: [{ id, authorId, authorName, body, valueSnapshot, createdAt }] }]
-POST   /comments        { targetType, targetId, fieldPath, authorId, authorName, body, valueSnapshot }
+       → [{ id, targetType, targetId, fieldPath, contextId, resolvedAt, comments: [{ id, authorId, authorName, body, valueSnapshot, createdAt }] }]
+GET    /comments?targetType=GEULIM_SO_SIZE&contextId=<부모 id>
+       → 부모 기준 전체. 지금은 없는(삭제된) 자식 행의 스레드도 같이 옵니다
+POST   /comments        { targetType, targetId, fieldPath, contextId?, authorId, authorName, body, valueSnapshot }
        → { thread, comment }   (같은 셀에 스레드가 이미 있으면 재사용)
+PATCH  /comment-threads/:id/reopen
 PATCH  /comments/:id    { body }
 DELETE /comments/:id    (soft delete)
 PATCH  /comment-threads/:id/resolve
